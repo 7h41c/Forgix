@@ -41,8 +41,9 @@ export const doctorCommand = new Command("doctor")
           if (fix) {
             const fixSpinner = ora("Installing Git...").start();
             try {
-              await execa("sudo", ["apt-get", "update"], { shell: true });
-              await execa("sudo", ["apt-get", "install", "-y", "git"], { shell: true });
+              // Use separate args array instead of shell: true to prevent injection
+              await execa("sudo", ["apt-get", "update"]);
+              await execa("sudo", ["apt-get", "install", "-y", "git"]);
               fixSpinner.succeed(chalk.green("Git installed successfully!"));
             } catch {
               fixSpinner.fail(chalk.red("Auto-fix failed. Please install Git manually: https://git-scm.com"));

@@ -35,9 +35,17 @@ export async function runCreate(options: {
     let templatePath = "";
 
     if (template.startsWith("github:")) {
-      const repoUrl = `https://github.com/${template.replace("github:", "")}.git`;
+      const repoPart = template.replace("github:", "");
+      
+      // Validate the repo format (must be user/repo or org/repo)
+      const githubRegex = /^([a-zA-Z0-9][a-zA-Z0-9-_]*\/)?[a-zA-Z0-9][a-zA-Z0-9-_]*$/;
+      if (!githubRegex.test(repoPart) || repoPart.includes("..") || repoPart.includes("/.")) {
+        throw new Error("Invalid GitHub repository format.");
+      }
+      
+      const repoUrl = `https://github.com/${repoPart}.git`;
       spinner.text = `Cloning remote template from GitHub...`;
-      await execa("git", ["clone", "--depth", "1", repoUrl, targetPath]);
+      await execa("git", ["clone", "--depth", "1", "--shallow-since=2024-01-01", repoUrl, targetPath]);
       fs.rmSync(path.join(targetPath, ".git"), { recursive: true, force: true });
     } else {
       const CONFIG_PATH = path.join(os.homedir(), ".forgix-links.json");
@@ -46,6 +54,13 @@ export async function runCreate(options: {
 
       if (customLinks[template]) {
         templatePath = customLinks[template];
+        
+        // Validate the linked path is safe (prevent path traversal)
+        const resolvedPath = path.resolve(templatePath);
+        const normalizedPath = path.normalize(templatePath);
+        if (normalizedPath.includes("..") || !path.isAbsolute(resolvedPath)) {
+          throw new Error("Invalid template path in custom link.");
+        }
       } else {
         templatePath = path.join(__dirname, "../../templates", template);
       }
