@@ -5,13 +5,14 @@ import chalk from "chalk";
 import ora from "ora";
 import { replaceVariablesInDir } from "./template-engine.js";
 import { installDependencies } from "./install.js";
-import { execa } from "execa"; // Added execa for git commands
+import { execa } from "execa";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export async function runCreate(options: { name: string; template: string }) {
-  const { name, template } = options;
+// Added skipInstall to the expected options
+export async function runCreate(options: { name: string; template: string; skipInstall?: boolean }) {
+  const { name, template, skipInstall } = options;
   const targetPath = path.join(process.cwd(), name);
 
   if (fs.existsSync(targetPath)) {
@@ -23,21 +24,14 @@ export async function runCreate(options: { name: string; template: string }) {
   const spinner = ora(`Fetching ${template} template...`).start();
 
   try {
-    // --- NEW: REMOTE VS LOCAL LOGIC ---
     if (template.startsWith("github:")) {
-      // Handle GitHub remote templates
       const repoPath = template.replace("github:", "");
       const repoUrl = `https://github.com/${repoPath}.git`;
       
       spinner.text = `Cloning remote template from ${repoUrl}...`;
-      // Clone only the latest commit to make it blazing fast
       await execa("git", ["clone", "--depth", "1", repoUrl, targetPath]);
-      
-      // Delete the .git folder so the user can start their own git history
       fs.rmSync(path.join(targetPath, ".git"), { recursive: true, force: true });
-
     } else {
-      // Handle Local templates
       const templatePath = path.join(__dirname, "../../templates", template);
       if (!fs.existsSync(templatePath)) {
         throw new Error(`Local template '${template}' not found.`);
@@ -45,18 +39,27 @@ export async function runCreate(options: { name: string; template: string }) {
       fs.copySync(templatePath, targetPath);
     }
 
-    // 2. Inject variables (works on both local and remote!)
     spinner.text = "Injecting project variables...";
     await replaceVariablesInDir(targetPath, { projectName: name });
 
-    // 3. Install dependencies (only if it's a Node project)
+    // --- NEW: SKIP INSTALL LOGIC ---
     if (fs.existsSync(path.join(targetPath, "package.json"))) {
-      spinner.text = "Installing dependencies...";
-      await installDependencies(targetPath);
+      if (skipInstall) {
+        spinner.info(chalk.yellow("Skipping dependency installation."));
+      } else {
+        spinner.text = "Installing dependencies... (this might take a minute)";
+        await installDependencies(targetPath);
+      }
     }
 
     spinner.succeed(chalk.green("Project created successfully!"));
     console.log(`\n🚀 ${chalk.cyan(name)} is ready!\n`);
+    
+    // Remind the user to install manually if they skipped it!
+    if (skipInstall) {
+      console.log(chalk.yellow(`⚠️  You skipped installation. Don't forget to run:`));
+      console.log(chalk.yellow(`   cd ${name} && npm install\n`));
+    }
 
   } catch (error: any) {
     spinner.fail(chalk.red("Failed to create project."));

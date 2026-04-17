@@ -6,9 +6,9 @@ export const createCommand = new Command("create")
   .description("Scaffold a new project")
   .argument("[name]", "Name of your project (optional)")
   .option("-t, --template <type>", "Template to use (e.g., node-api, github:user/repo)")
+  .option("--skip-install", "Skip dependency installation for faster scaffolding") // NEW FLAG
   .action(async (nameArg, options) => {
     try {
-      // 1. Check if name was passed as an argument, otherwise prompt
       let projectName = nameArg;
       if (!projectName) {
         projectName = await input({
@@ -17,7 +17,6 @@ export const createCommand = new Command("create")
         });
       }
 
-      // 2. Check if template was passed as a flag, otherwise prompt
       let template = options.template;
       if (!template) {
         template = await select({
@@ -30,8 +29,13 @@ export const createCommand = new Command("create")
         });
       }
 
-      // 3. Execute core logic
-      await runCreate({ name: projectName, template });
+      // Pass the skipInstall option to the core engine
+      await runCreate({ 
+        name: projectName, 
+        template, 
+        skipInstall: options.skipInstall 
+      });
+      
     } catch (error) {
       console.log("\nExiting Forgix...");
       process.exit(1);
