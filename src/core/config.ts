@@ -34,4 +34,6 @@ export async function saveConfig(config: Partial<ForgixConfig>) {
   const current = await getConfig();
   const updated = { ...current, ...config };
   await fs.writeJson(CONFIG_PATH, updated, { spaces: 2 });
+  // SECURITY: Restrict config to owner-only (was world-readable)
+  fs.chmodSync(CONFIG_PATH, "0600");
 }

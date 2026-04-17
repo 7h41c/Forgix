@@ -35,22 +35,42 @@ export async function runCreate(options: {
     let templatePath = "";
 
     if (template.startsWith("github:")) {
-      const repoUrl = `https://github.com/${template.replace("github:", "")}.git`;
-      
+      const repoPart = template.replace("github:", "");
+
+      // SECURITY: Validate repo format before any network call
+      const githubRegex = /^([a-zA-Z0-9][a-zA-Z0-9-_]*\/)?[a-zA-Z0-9][a-zA-Z0-9-_]*$/;
+      if (!githubRegex.test(repoPart) || repoPart.includes("..") || repoPart.includes("/.")) {
+        throw new Error("Invalid GitHub repository format — path traversal or illegal characters detected.");
+      }
+
+      const repoUrl = `https://github.com/${repoPart}.git`;
+
       // --- SECURITY AUDIT FIX: REMOTE WARNING ---
       console.log(chalk.red.bold("\n⚠️  SECURITY WARNING"));
       console.log(chalk.yellow("You are cloning a remote repository. Always inspect the code"));
       console.log(chalk.yellow("for malicious 'postinstall' scripts before running installation commands.\n"));
-      
+
       const proceed = await confirm({ message: "Do you trust this source and want to proceed?", default: true });
       if (!proceed) {
         console.log(chalk.gray("Aborting for safety."));
         process.exit(1);
       }
-      
+
       const spinner = ora(`Cloning remote template from GitHub...`).start();
       await execa("git", ["clone", "--depth", "1", repoUrl, targetPath]);
-      fs.rmSync(path.join(targetPath, ".git"), { recursive: true, force: true });
+
+      // SECURITY: Verify .git was removed — fail if it persists
+      const gitDir = path.join(targetPath, ".git");
+      if (fs.existsSync(gitDir)) {
+        try {
+          fs.rmSync(gitDir, { recursive: true, force: true });
+        } catch {
+          throw new Error("Failed to remove .git directory — clone may be compromised.");
+        }
+        if (fs.existsSync(gitDir)) {
+          throw new Error("Security error: .git directory still present after removal.");
+        }
+      }
       spinner.succeed(chalk.green("Remote template cloned."));
     } else {
       const spinner = ora(`Fetching ${template} template...`).start();
@@ -65,6 +85,25 @@ export async function runCreate(options: {
 
       if (customLinks[template]) {
         templatePath = customLinks[template];
+
+        // SECURITY: Validate resolved path
+        const resolvedPath = path.resolve(templatePath);
+        const normalizedPath = path.normalize(templatePath);
+        if (normalizedPath.includes("..") || !path.isAbsolute(resolvedPath)) {
+          throw new Error("Invalid template path — path traversal detected.");
+        }
+
+        // SECURITY: Must be a directory
+        const stat = fs.statSync(resolvedPath);
+        if (!stat.isDirectory()) {
+          throw new Error("Template path must be a directory.");
+        }
+
+        // SECURITY: Block sensitive system directories
+        const sensitiveDirs = [".ssh", ".gnupg", ".aws", ".npm", ".cache"];
+        if (sensitiveDirs.some(dir => resolvedPath.includes(dir))) {
+          throw new Error(`Cannot use system directory '${resolvedPath}' as a template — denied.`);
+        }
       } else {
         templatePath = path.join(__dirname, "../../templates", template);
       }
