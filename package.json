@@ -1,11 +1,17 @@
 {
-  "name": "forgix",
-  "version": "1.0.0",
+  "name": "@7h41c/forgix",
+  "version": "1.0.2",
   "description": "",
   "main": "index.js",
-  "type": "module",
+  "files": [
+    "dist",
+    "bin",
+    "templates",
+    "plugins"
+  ],
+ "type": "module",
   "bin": {
-    "forgix": "./bin/forgix.js"
+    "forgix": "bin/forgix.js"
   },
   "scripts": {
     "build": "tsc",

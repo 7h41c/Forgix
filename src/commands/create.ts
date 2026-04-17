@@ -6,7 +6,9 @@ export const createCommand = new Command("create")
   .description("Scaffold a new project")
   .argument("[name]", "Name of your project (optional)")
   .option("-t, --template <type>", "Template to use (e.g., node-api, github:user/repo)")
-  .option("--skip-install", "Skip dependency installation for faster scaffolding") // NEW FLAG
+  .option("--skip-install", "Skip dependency installation for faster scaffolding")
+  .option("--git", "Initialize a git repository")
+  .option("--open", "Open the project in VS Code")
   .action(async (nameArg, options) => {
     try {
       let projectName = nameArg;
@@ -29,13 +31,15 @@ export const createCommand = new Command("create")
         });
       }
 
-      // Pass the skipInstall option to the core engine
-      await runCreate({ 
-        name: projectName, 
-        template, 
-        skipInstall: options.skipInstall 
+      // Pass all flags to the core engine
+      await runCreate({
+        name: projectName,
+        template: template,
+        skipInstall: options.skipInstall,
+        git: options.git,
+        open: options.open
       });
-      
+
     } catch (error) {
       console.log("\nExiting Forgix...");
       process.exit(1);

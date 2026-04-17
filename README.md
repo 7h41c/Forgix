@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=12&height=200&section=header&text=Forgix&fontSize=80&animation=fadeIn&fontAlignY=35" width="100%" alt="Forgix Animated Banner" />
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=12&height=200&section=header&text=Forgix%20🚀&fontSize=80&animation=fadeIn&fontAlignY=35" width="100%" alt="Forgix Animated Banner" />
   <br />
   <p><b>An elite, blazing-fast project scaffolding CLI designed to eliminate project setup fatigue.</b></p>
   <img src="https://img.shields.io/npm/v/@7h41c/forgix.svg?style=flat-square" alt="NPM Version" />
