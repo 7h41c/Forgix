@@ -12,12 +12,10 @@
 Starting a new project shouldn't mean spending 20 minutes copying boilerplate, manually changing variables, and resetting git histories. **Forgix** automates the entire repetitive process so you can go straight from a great idea to writing actual code. 
 
 ## ✨ Elite Features
-* **Interactive Prompts:** Clean, modern CLI interface for seamlessly selecting project types.
-* **Intelligent Templating:** Automatically scans and injects your project name into configuration files.
-* **Remote GitHub Cloning:** Pull down *any* public GitHub repository to use as a starting point, instantly stripping old commit history so you start fresh.
-* **Auto-Install:** Automatically triggers your package manager to install dependencies.
-* **Speed Mode:** Bypass prompts and skip installations using flags for instant, 2-second scaffolding.
-* **Plugin Injection:** Drop features (like Dockerfiles) directly into existing projects without overwriting your code.
+* **👨‍⚕️ Forgix Doctor:** Built-in system diagnostics to ensure your environment is healthy and ready to build.
+* **👤 Personalization:** Interactive prompts for Author and License injection—making every project yours from the start.
+* **📂 Smart Scaffolding:** Choose from Node, React, Python, or Vue templates with one click.
+* **🚀 Elite Flow:** Use `--git` to initialize your repo and `--open` to launch VS Code automatically.
 
 ## 🚀 Installation & Usage
 

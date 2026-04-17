@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { createCommand } from "../commands/create.js";
 import { addCommand } from "../commands/add.js";
 import { listCommand } from "../commands/list.js"; // NEW IMPORT
+import { doctorCommand } from "../commands/doctor.js";
 
 const program = new Command();
 
@@ -14,5 +15,6 @@ program
 program.addCommand(createCommand);
 program.addCommand(addCommand);
 program.addCommand(listCommand); // NEW REGISTRATION
+program.addCommand(doctorCommand);
 
 program.parse(process.argv);

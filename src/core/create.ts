@@ -16,8 +16,9 @@ export async function runCreate(options: {
   skipInstall?: boolean;
   git?: boolean;
   open?: boolean;
+  variables?: { author: string; license: string }; // NEW
 }) {
-  const { name, template, skipInstall, git, open } = options;
+  const { name, template, skipInstall, git, open, variables } = options;
   const targetPath = path.join(process.cwd(), name);
 
   if (fs.existsSync(targetPath)) {
@@ -30,9 +31,7 @@ export async function runCreate(options: {
   try {
     // 1. Fetch Template
     if (template.startsWith("github:")) {
-      const repoPath = template.replace("github:", "");
-      const repoUrl = `https://github.com/${repoPath}.git`;
-      spinner.text = `Cloning remote template...`;
+      const repoUrl = `https://github.com/${template.replace("github:", "")}.git`;
       await execa("git", ["clone", "--depth", "1", repoUrl, targetPath]);
       fs.rmSync(path.join(targetPath, ".git"), { recursive: true, force: true });
     } else {
@@ -41,64 +40,39 @@ export async function runCreate(options: {
       fs.copySync(templatePath, targetPath);
     }
 
-    // 2. Inject Variables
+    // 2. Inject Variables (Using the new author/license)
     spinner.text = "Injecting project variables...";
-    await replaceVariablesInDir(targetPath, { projectName: name });
+    await replaceVariablesInDir(targetPath, { 
+      projectName: name,
+      author: variables?.author || "Developer",
+      license: variables?.license || "MIT"
+    });
 
-    // 3. Install Dependencies
-    if (fs.existsSync(path.join(targetPath, "package.json"))) {
-      if (skipInstall) {
-        spinner.info(chalk.yellow("Skipping dependency installation."));
-      } else {
-        spinner.text = "Installing dependencies...";
-        await installDependencies(targetPath);
-      }
+    // 3. Install
+    if (fs.existsSync(path.join(targetPath, "package.json")) && !skipInstall) {
+      spinner.text = "Installing dependencies...";
+      await installDependencies(targetPath);
     }
 
-    // 4. Initialize Git
+    // 4. Git Init
     if (git) {
-      spinner.text = "Initializing Git repository...";
       await execa("git", ["init"], { cwd: targetPath });
       await execa("git", ["add", "."], { cwd: targetPath });
       await execa("git", ["commit", "-m", "Initial commit from Forgix 🚀"], { cwd: targetPath });
-      spinner.info(chalk.blue("Git repository initialized."));
     }
 
     spinner.succeed(chalk.green("Project created successfully!"));
 
-    // 5. Robust Open Logic
+    // 5. Open Editor
     if (open) {
-      const openCommands = [
-        { cmd: "code", args: ["."] },
-        { cmd: "code.cmd", args: ["."] },
-        { cmd: "powershell.exe", args: ["-Command", "code ."] }
-      ];
-
-      let opened = false;
-      for (const attempt of openCommands) {
-        try {
-          await execa(attempt.cmd, attempt.args, { cwd: targetPath, shell: true });
-          opened = true;
-          break; 
-        } catch {
-          continue; 
-        }
-      }
-
-      if (opened) {
-        console.log(chalk.magenta("📂 Project opened in VS Code."));
-      } else {
-        try {
-          await execa("explorer.exe", ["."], { cwd: targetPath });
-          console.log(chalk.yellow("⚠️  Opened in Explorer (couldn't find 'code' command)."));
-        } catch {
-          console.log(chalk.gray("💡 Note: Navigate to the folder to start coding!"));
-        }
+      try {
+        await execa("code", ["."], { cwd: targetPath, shell: true });
+      } catch {
+        await execa("code.cmd", ["."], { cwd: targetPath, shell: true });
       }
     }
 
     console.log(`\n🚀 ${chalk.cyan(name)} is ready!\n`);
-
   } catch (error: any) {
     spinner.fail(chalk.red("Failed to create project."));
     console.error(chalk.red(error.message));
