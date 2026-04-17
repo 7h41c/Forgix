@@ -4,40 +4,64 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import ora from "ora";
 import os from "os";
-import { confirm } from "@inquirer/prompts"; // Added for Security Warning
+import { confirm } from "@inquirer/prompts";
 import { replaceVariablesInDir } from "./template-engine.js";
-import { installDependencies } from "./install.js";
+import { installDependencies, PackageManager } from "./install.js";
 import { execa } from "execa";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export async function runCreate(options: { 
-  name: string; 
-  template: string; 
+export interface CreateOptions {
+  name: string;
+  template: string;
   skipInstall?: boolean;
   git?: boolean;
   open?: boolean;
   variables?: { author: string; license: string };
   plugins?: string[];
-}) {
-  const { name, template, skipInstall, git, open, variables, plugins } = options;
+  packageManager?: PackageManager;
+  typescript?: boolean;
+  css?: string;
+  docker?: boolean;
+  eslint?: boolean;
+  prettier?: boolean;
+  test?: boolean;
+  ci?: boolean;
+}
+
+export async function runCreate(options: CreateOptions) {
+  const {
+    name,
+    template,
+    skipInstall,
+    git,
+    open,
+    variables,
+    plugins,
+    packageManager = "npm",
+    typescript,
+    css,
+    docker,
+    eslint,
+    prettier,
+    test,
+    ci
+  } = options;
+
   const targetPath = path.join(process.cwd(), name);
 
-  // 0. Initial Validation
   if (fs.existsSync(targetPath)) {
     console.log(chalk.red(`\n❌ Error: Folder '${name}' already exists.\n`));
     process.exit(1);
   }
 
   try {
-    // 1. Fetch Template Path
     let templatePath = "";
 
+    // 1. Fetch Template
     if (template.startsWith("github:")) {
       const repoPart = template.replace("github:", "");
-      
-      // SECURITY: Validate GitHub repo format to prevent path traversal
       const githubRegex = /^([a-zA-Z0-9][a-zA-Z0-9-_]*\/)?[a-zA-Z0-9][a-zA-Z0-9-_]*$/;
       if (!githubRegex.test(repoPart) || repoPart.includes("..") || repoPart.includes("/.")) {
         throw new Error("Invalid GitHub repository format.");
@@ -45,7 +69,6 @@ export async function runCreate(options: {
       
       const repoUrl = `https://github.com/${repoPart}.git`;
       
-      // --- SECURITY AUDIT FIX: REMOTE WARNING ---
       console.log(chalk.red.bold("\n⚠️  SECURITY WARNING"));
       console.log(chalk.yellow("You are cloning a remote repository. Always inspect the code"));
       console.log(chalk.yellow("for malicious 'postinstall' scripts before running installation commands.\n"));
@@ -59,7 +82,6 @@ export async function runCreate(options: {
       const spinner = ora(`Cloning remote template from GitHub...`).start();
       await execa("git", ["clone", "--depth", "1", repoUrl, targetPath]);
       
-      // SECURITY: Verify .git was removed - fail if it persists (prevents attacker-controlled remote)
       const gitDir = path.join(targetPath, ".git");
       if (fs.existsSync(gitDir)) {
         try {
@@ -76,7 +98,6 @@ export async function runCreate(options: {
     } else {
       const spinner = ora(`Fetching ${template} template...`).start();
       
-      // Check for Custom Linked Templates first
       const CONFIG_PATH = path.join(os.homedir(), ".forgix-links.json");
       let customLinks: Record<string, string> = {};
       
@@ -87,20 +108,17 @@ export async function runCreate(options: {
       if (customLinks[template]) {
         templatePath = customLinks[template];
         
-        // SECURITY: Validate the linked path to prevent path traversal
         const resolvedPath = path.resolve(templatePath);
         const normalizedPath = path.normalize(templatePath);
         if (normalizedPath.includes("..") || !path.isAbsolute(resolvedPath)) {
           throw new Error("Invalid template path in custom link.");
         }
         
-        // SECURITY: Verify it's a directory
         const stat = fs.statSync(resolvedPath);
         if (!stat.isDirectory()) {
           throw new Error("Template path must be a directory, not a file.");
         }
         
-        // SECURITY: Block copying of sensitive system directories
         const sensitiveDirs = [".ssh", ".gnupg", ".aws", ".npm", ".cache"];
         if (sensitiveDirs.some(dir => resolvedPath.includes(dir))) {
           throw new Error("Cannot use system directories as templates.");
@@ -117,6 +135,9 @@ export async function runCreate(options: {
       fs.copySync(templatePath, targetPath);
       spinner.succeed(chalk.green(`Template '${template}' loaded.`));
     }
+
+    // Apply CLI customizations
+    await applyCustomizations(targetPath, { typescript, css, docker, eslint, prettier, test, ci });
 
     const spinner = ora("Configuring project...").start();
 
@@ -141,8 +162,8 @@ export async function runCreate(options: {
 
     // 4. Install Dependencies
     if (fs.existsSync(path.join(targetPath, "package.json")) && !skipInstall) {
-      spinner.text = "Installing dependencies (this may take a minute)...";
-      await installDependencies(targetPath);
+      spinner.text = `Installing dependencies with ${packageManager}...`;
+      await installDependencies(targetPath, packageManager);
     }
 
     // 5. Initialize Git
@@ -155,7 +176,7 @@ export async function runCreate(options: {
 
     spinner.succeed(chalk.green("Project created successfully!"));
 
-    // 6. Robust Open Logic
+    // 6. Open in VS Code
     if (open) {
       const openCommands = [
         { cmd: "code", args: ["."] },
@@ -180,4 +201,138 @@ export async function runCreate(options: {
     console.log(chalk.red(`\n❌ Error: ${error.message}`));
     process.exit(1);
   }
+}
+
+interface CustomizationOptions {
+  typescript?: boolean;
+  css?: string;
+  docker?: boolean;
+  eslint?: boolean;
+  prettier?: boolean;
+  test?: boolean;
+  ci?: boolean;
+}
+
+async function applyCustomizations(targetPath: string, options: CustomizationOptions) {
+  const { typescript, css, docker, eslint, prettier, test, ci } = options;
+  
+  // TypeScript: Rename jsconfig.json to tsconfig.json if present
+  if (typescript) {
+    const jsconfigPath = path.join(targetPath, "jsconfig.json");
+    if (fs.existsSync(jsconfigPath)) {
+      fs.renameSync(jsconfigPath, path.join(targetPath, "tsconfig.json"));
+    }
+  }
+
+  // Docker: Add docker-compose if requested
+  if (docker) {
+    const dockerComposePath = path.join(targetPath, "docker-compose.yml");
+    if (!fs.existsSync(dockerComposePath)) {
+      const pkg = fs.existsSync(path.join(targetPath, "package.json")) 
+        ? fs.readJsonSync(path.join(targetPath, "package.json"))
+        : { name: "app" };
+      
+      fs.writeFileSync(dockerComposePath, 
+`version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    command: ${typescript ? "npm run dev" : "npm start"}
+`);
+    }
+  }
+
+  // ESLint: Add .eslintrc.json
+  if (eslint) {
+    const eslintConfig = typescript 
+      ? path.join(targetPath, ".eslintrc.json")
+      : path.join(targetPath, ".eslintrc.json");
+    
+    if (!fs.existsSync(eslintConfig)) {
+      const config = typescript
+        ? { env: { browser: true, es2021: true, node: true }, extends: ["eslint:recommended"], parser: "@typescript-eslint/parser", parserOptions: { ecmaVersion: "latest", sourceType: "module" }, rules: {} }
+        : { env: { browser: true, es2021: true, node: true }, extends: ["eslint:recommended"], parserOptions: { ecmaVersion: "latest", sourceType: "module" }, rules: {} };
+      
+      fs.writeFileSync(eslintConfig, JSON.stringify(config, null, 2));
+    }
+  }
+
+  // Prettier: Add .prettierrc
+  if (prettier) {
+    const prettierPath = path.join(targetPath, ".prettierrc");
+    if (!fs.existsSync(prettierPath)) {
+      fs.writeFileSync(prettierPath, JSON.stringify({ semi: true, singleQuote: true, tabWidth: 2, trailingComma: "es5" }, null, 2));
+    }
+  }
+
+  // Test: Add basic test setup
+  if (test) {
+    const testDir = path.join(targetPath, "tests");
+    if (!fs.existsSync(testDir)) {
+      fs.mkdirSync(testDir, { recursive: true });
+      fs.writeFileSync(path.join(testDir, "example.test.js"), 
+`describe('Example Test', () => {
+  test('should pass', () => {
+    expect(true).toBe(true);
+  });
+});
+`);
+    }
+    
+    // Update package.json with test script if exists
+    const pkgPath = path.join(targetPath, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      const pkg = fs.readJsonSync(pkgPath);
+      pkg.scripts = pkg.scripts || {};
+      pkg.scripts.test = "jest";
+      fs.writeJsonSync(pkgPath, pkg, { spaces: 2 });
+    }
+  }
+
+  // CI: Add GitHub Actions workflow
+  if (ci) {
+    const workflowDir = path.join(targetPath, ".github", "workflows");
+    if (!fs.existsSync(workflowDir)) {
+      fs.mkdirSync(workflowDir, { recursive: true });
+      
+      const nodeVersion = typescript ? "20" : "18";
+      
+      fs.writeFileSync(path.join(workflowDir, "ci.yml"), 
+`name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '${nodeVersion}'
+        cache: 'npm'
+    - name: Install dependencies
+      run: npm install
+    - name: Run tests
+      run: npm test
+`);
+    }
+  }
+}
+
+// Helper to detect package manager from lock files
+export function detectPackageManager(dir: string): PackageManager {
+  if (fs.existsSync(path.join(dir, "pnpm-lock.yaml"))) return "pnpm";
+  if (fs.existsSync(path.join(dir, "yarn.lock"))) return "yarn";
+  return "npm";
 }

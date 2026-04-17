@@ -45,8 +45,8 @@ When you run `forgix create my-app`, here's what happens:
 | 1 | Fetches the template (built-in, GitHub, or your custom link) |
 | 2 | Copies files to your new project folder |
 | 3 | Replaces `{{author}}`, `{{license}}`, `{{projectName}}` with your info |
-| 4 | Injects any plugins you selected (e.g., Docker) |
-| 5 | Runs `npm install` to install dependencies |
+| 4 | Injects any plugins or customizations (Docker, ESLint, etc.) |
+| 5 | Runs `npm install` (or yarn/pnpm) to install dependencies |
 | 6 | Runs `git init` with an initial commit |
 | 7 | Opens the project in VS Code |
 
@@ -54,20 +54,57 @@ All in one command.
 
 ---
 
-## 📦 What's Included
+## 📦 Templates Included
 
-### Built-in Templates
+### Frontend
 - `react-vite` — React + Vite
-- `vue-app` — Vue.js
-- `node-api` — Node.js API
+- `react-vite-ts` — React + Vite + TypeScript
+- `vue-app` — Vue.js 3
+- `nextjs` — Next.js 14
+- `svelte` — Svelte 4
+
+### Backend
+- `node-api` — Node.js Express API
+- `express-ts` — Express + TypeScript
 - `python-script` — Python script
+- `fastapi` — Python FastAPI
 
-### Plugins
-- `docker` — Adds a Dockerfile to your project
+### Remote
+- Any public GitHub repo with `--template github:user/repo`
 
-### Custom Templates
-- Link any folder on your computer as a template with `forgix link`
-- Clone any public GitHub repo with `--template github:user/repo`
+---
+
+## 🧩 CLI Flags & Options
+
+```bash
+forgix create my-app [options]
+```
+
+| Flag | Description |
+|------|-------------|
+| `-t, --template <name>` | Choose a template |
+| `--pm <npm|yarn|pnpm>` | Package manager to use |
+| `--ts` | Use TypeScript |
+| `--js` | Use JavaScript (default) |
+| `--css <tailwind|sass>` | Add CSS framework |
+| `--docker` | Add Docker support |
+| `--eslint` | Add ESLint configuration |
+| `--prettier` | Add Prettier configuration |
+| `--test` | Add Jest testing setup |
+| `--ci` | Add GitHub Actions CI workflow |
+| `--git` | Initialize git repository |
+| `--open` | Open in VS Code |
+| `--skip-install` | Skip dependency installation |
+
+### Examples
+
+```bash
+# Interactive mode
+forgix create
+
+# One-liner with all options
+forgix create my-app --template react-vite --pm pnpm --ts --eslint --prettier --docker --ci --git --open
+```
 
 ---
 
@@ -128,7 +165,7 @@ Templates can use placeholders that Forgix replaces:
 
 ## 🗺️ Roadmap
 
-- [x] v1.0.8 — Security hardening & input validation
+- [x] v1.0.8 — CLI flags, package managers, new templates, customizations
 - [x] v1.0.7 — Global config profile
 - [x] v1.0.6 — Plugin selection
 - [x] v1.0.5 — Custom template linking
