@@ -181,3 +181,10 @@ Contributions are welcome and help improve Forgix.
 <div align="center">
   <p>Built with ❤️ by T7h41 and the Forgix Community.</p>
 </div>
+
+---
+
+## 🔒 Security Notice
+Forgix allows for rapid scaffolding of third-party templates. 
+- **Remote Templates:** When using `github:` templates, Forgix does not currently perform checksum verification. 
+- **User Responsibility:** Users are advised to only clone from trusted sources and inspect `package.json` files for malicious `scripts` (e.g., `preinstall`, `postinstall`) before running dependency installations.

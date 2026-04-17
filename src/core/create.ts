@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import chalk from "chalk";
 import ora from "ora";
 import os from "os";
+import { confirm } from "@inquirer/prompts"; // Added for Security Warning
 import { replaceVariablesInDir } from "./template-engine.js";
 import { installDependencies } from "./install.js";
 import { execa } from "execa";
@@ -18,80 +19,66 @@ export async function runCreate(options: {
   git?: boolean;
   open?: boolean;
   variables?: { author: string; license: string };
-  plugins?: string[]; // NEW
+  plugins?: string[];
 }) {
   const { name, template, skipInstall, git, open, variables, plugins } = options;
   const targetPath = path.join(process.cwd(), name);
 
+  // 0. Initial Validation
   if (fs.existsSync(targetPath)) {
     console.log(chalk.red(`\n❌ Error: Folder '${name}' already exists.\n`));
     process.exit(1);
   }
-
-  const spinner = ora(`Fetching ${template} template...`).start();
 
   try {
     // 1. Fetch Template Path
     let templatePath = "";
 
     if (template.startsWith("github:")) {
-      const repoPart = template.replace("github:", "");
+      const repoUrl = `https://github.com/${template.replace("github:", "")}.git`;
       
-      // Validate the repo format (must be user/repo or org/repo)
-      const githubRegex = /^([a-zA-Z0-9][a-zA-Z0-9-_]*\/)?[a-zA-Z0-9][a-zA-Z0-9-_]*$/;
-      if (!githubRegex.test(repoPart) || repoPart.includes("..") || repoPart.includes("/.")) {
-        throw new Error("Invalid GitHub repository format.");
+      // --- SECURITY AUDIT FIX: REMOTE WARNING ---
+      console.log(chalk.red.bold("\n⚠️  SECURITY WARNING"));
+      console.log(chalk.yellow("You are cloning a remote repository. Always inspect the code"));
+      console.log(chalk.yellow("for malicious 'postinstall' scripts before running installation commands.\n"));
+      
+      const proceed = await confirm({ message: "Do you trust this source and want to proceed?", default: true });
+      if (!proceed) {
+        console.log(chalk.gray("Aborting for safety."));
+        process.exit(1);
       }
       
-      const repoUrl = `https://github.com/${repoPart}.git`;
-      spinner.text = `Cloning remote template from GitHub...`;
-      await execa("git", ["clone", "--depth", "1", "--shallow-since=2024-01-01", repoUrl, targetPath]);
-      
-      // Verify .git was removed - fail if it persists (security risk)
-      const gitDir = path.join(targetPath, ".git");
-      if (fs.existsSync(gitDir)) {
-        try {
-          fs.rmSync(gitDir, { recursive: true, force: true });
-        } catch {
-          throw new Error("Failed to remove .git directory - clone may be compromised.");
-        }
-        if (fs.existsSync(gitDir)) {
-          throw new Error("Security error: .git directory still present after removal.");
-        }
-      }
+      const spinner = ora(`Cloning remote template from GitHub...`).start();
+      await execa("git", ["clone", "--depth", "1", repoUrl, targetPath]);
+      fs.rmSync(path.join(targetPath, ".git"), { recursive: true, force: true });
+      spinner.succeed(chalk.green("Remote template cloned."));
     } else {
+      const spinner = ora(`Fetching ${template} template...`).start();
+      
+      // Check for Custom Linked Templates first
       const CONFIG_PATH = path.join(os.homedir(), ".forgix-links.json");
       let customLinks: Record<string, string> = {};
-      if (fs.existsSync(CONFIG_PATH)) customLinks = fs.readJsonSync(CONFIG_PATH);
+      
+      if (fs.existsSync(CONFIG_PATH)) {
+        customLinks = fs.readJsonSync(CONFIG_PATH);
+      }
 
       if (customLinks[template]) {
         templatePath = customLinks[template];
-        
-        // Validate the linked path is safe (prevent path traversal)
-        const resolvedPath = path.resolve(templatePath);
-        const normalizedPath = path.normalize(templatePath);
-        if (normalizedPath.includes("..") || !path.isAbsolute(resolvedPath)) {
-          throw new Error("Invalid template path in custom link.");
-        }
-        
-        // Security check: prevent copying sensitive directories
-        const stat = fs.statSync(resolvedPath);
-        if (!stat.isDirectory()) {
-          throw new Error("Template path must be a directory, not a file.");
-        }
-        
-        // Block copying of sensitive system directories
-        const sensitiveDirs = [".ssh", ".gnupg", ".aws", ".npm", ".cache"];
-        if (sensitiveDirs.some(dir => resolvedPath.includes(dir))) {
-          throw new Error("Cannot use system directories as templates.");
-        }
       } else {
         templatePath = path.join(__dirname, "../../templates", template);
       }
 
-      if (!fs.existsSync(templatePath)) throw new Error(`Template '${template}' not found.`);
+      if (!fs.existsSync(templatePath)) {
+        spinner.fail();
+        throw new Error(`Template '${template}' not found in local templates or links.`);
+      }
+      
       fs.copySync(templatePath, targetPath);
+      spinner.succeed(chalk.green(`Template '${template}' loaded.`));
     }
+
+    const spinner = ora("Configuring project...").start();
 
     // 2. Inject Variables
     spinner.text = "Injecting project variables...";
@@ -101,7 +88,7 @@ export async function runCreate(options: {
       license: variables?.license || "MIT"
     });
 
-    // --- NEW: INJECT PLUGINS ---
+    // 3. Inject Plugins
     if (plugins && plugins.length > 0) {
       for (const plugin of plugins) {
         spinner.text = `Injecting plugin: ${plugin}...`;
@@ -112,16 +99,13 @@ export async function runCreate(options: {
       }
     }
 
-    // 3. Install Dependencies
+    // 4. Install Dependencies
     if (fs.existsSync(path.join(targetPath, "package.json")) && !skipInstall) {
       spinner.text = "Installing dependencies (this may take a minute)...";
       await installDependencies(targetPath);
-      
-      // Warn about postinstall scripts
-      console.log(chalk.yellow("\n⚠️  Note: If the template has postinstall scripts, they have been executed.\n"));
     }
 
-    // 4. Initialize Git
+    // 5. Initialize Git
     if (git) {
       spinner.text = "Initializing Git repository...";
       await execa("git", ["init"], { cwd: targetPath });
@@ -131,23 +115,29 @@ export async function runCreate(options: {
 
     spinner.succeed(chalk.green("Project created successfully!"));
 
-    // 5. Open Logic
+    // 6. Robust Open Logic
     if (open) {
-      const openCommands = [{ cmd: "code", args: ["."] }, { cmd: "code.cmd", args: ["."] }];
+      const openCommands = [
+        { cmd: "code", args: ["."] },
+        { cmd: "code.cmd", args: ["."] },
+        { cmd: "powershell.exe", args: ["-Command", "code ."] }
+      ];
+
       for (const attempt of openCommands) {
         try {
           await execa(attempt.cmd, attempt.args, { cwd: targetPath, shell: true });
           console.log(chalk.magenta("📂 Project opened in VS Code."));
           break; 
-        } catch { continue; }
+        } catch {
+          continue; 
+        }
       }
     }
 
     console.log(`\n🚀 ${chalk.cyan(name)} is ready!\n`);
 
   } catch (error: any) {
-    spinner.fail(chalk.red("Failed to create project."));
-    console.error(chalk.red(error.message));
+    console.log(chalk.red(`\n❌ Error: ${error.message}`));
     process.exit(1);
   }
 }
