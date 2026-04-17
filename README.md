@@ -141,7 +141,22 @@ forgix create my-app --template react-vite --git --open
 ```bash
 forgix config
 ```
-This saves your name and license — Forgix uses them automatically for every new project.
+This saves your name, license, default template, package manager, and default flags — Forgix uses them automatically for every new project.
+
+### Personalize Your Defaults
+When you run `forgix config`, you can set:
+
+| Option | Description |
+|--------|-------------|
+| Default Template | Your preferred template (used if no `--template` flag given) |
+| Default Package Manager | npm, yarn, or pnpm |
+| Default Flags | Choose flags to always apply (--git, --open, --eslint, etc.) |
+
+Once configured, you can just run:
+```bash
+forgix create my-app
+```
+And it will use your defaults automatically!
 
 ---
 
