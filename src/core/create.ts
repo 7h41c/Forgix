@@ -46,7 +46,19 @@ export async function runCreate(options: {
       const repoUrl = `https://github.com/${repoPart}.git`;
       spinner.text = `Cloning remote template from GitHub...`;
       await execa("git", ["clone", "--depth", "1", "--shallow-since=2024-01-01", repoUrl, targetPath]);
-      fs.rmSync(path.join(targetPath, ".git"), { recursive: true, force: true });
+      
+      // Verify .git was removed - fail if it persists (security risk)
+      const gitDir = path.join(targetPath, ".git");
+      if (fs.existsSync(gitDir)) {
+        try {
+          fs.rmSync(gitDir, { recursive: true, force: true });
+        } catch {
+          throw new Error("Failed to remove .git directory - clone may be compromised.");
+        }
+        if (fs.existsSync(gitDir)) {
+          throw new Error("Security error: .git directory still present after removal.");
+        }
+      }
     } else {
       const CONFIG_PATH = path.join(os.homedir(), ".forgix-links.json");
       let customLinks: Record<string, string> = {};
@@ -60,6 +72,18 @@ export async function runCreate(options: {
         const normalizedPath = path.normalize(templatePath);
         if (normalizedPath.includes("..") || !path.isAbsolute(resolvedPath)) {
           throw new Error("Invalid template path in custom link.");
+        }
+        
+        // Security check: prevent copying sensitive directories
+        const stat = fs.statSync(resolvedPath);
+        if (!stat.isDirectory()) {
+          throw new Error("Template path must be a directory, not a file.");
+        }
+        
+        // Block copying of sensitive system directories
+        const sensitiveDirs = [".ssh", ".gnupg", ".aws", ".npm", ".cache"];
+        if (sensitiveDirs.some(dir => resolvedPath.includes(dir))) {
+          throw new Error("Cannot use system directories as templates.");
         }
       } else {
         templatePath = path.join(__dirname, "../../templates", template);
@@ -92,6 +116,9 @@ export async function runCreate(options: {
     if (fs.existsSync(path.join(targetPath, "package.json")) && !skipInstall) {
       spinner.text = "Installing dependencies (this may take a minute)...";
       await installDependencies(targetPath);
+      
+      // Warn about postinstall scripts
+      console.log(chalk.yellow("\n⚠️  Note: If the template has postinstall scripts, they have been executed.\n"));
     }
 
     // 4. Initialize Git
