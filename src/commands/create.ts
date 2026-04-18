@@ -31,6 +31,8 @@ export const createCommand = new Command("create")
   .option("-l, --license <type>", "License (MIT, ISC, Apache-2.0, GPL-3.0)")
   .option("-p, --plugins <plugins...>", "Plugins to inject (comma or space separated)")
   .option("--trust-remote", "Auto-accept remote template clones (for CI/agents)")
+  .option("--dry-run", "Preview files that would be created without making changes")
+  .option("--layers <layers...>", "Template layers to apply (for composable templates)")
   .option("-n, --non-interactive", "Skip all prompts, use defaults and provided flags (for CI/agents)")
   .action(async (nameArg, options) => {
     const nonInteractive = options.nonInteractive || process.env.FORGIX_NON_INTERACTIVE === "1" || !process.stdout.isTTY;
@@ -176,6 +178,8 @@ export const createCommand = new Command("create")
         test,
         ci,
         trustRemote: options.trustRemote,
+        dryRun: options.dryRun,
+        layers: options.layers,
         nonInteractive
       });
 

@@ -7,6 +7,10 @@ import os from "os";
 import { confirm } from "@inquirer/prompts";
 import { replaceVariablesInDir } from "./template-engine.js";
 import { installDependencies, PackageManager } from "./install.js";
+import { loadHooks, runHooks, HooksConfig } from "./hooks.js";
+import { loadTemplateManifest, createLockFile, TemplateManifest } from "./versioning.js";
+import { scanTemplate, printDryRun, exportDryRunJSON } from "./dry-run.js";
+import { resolveCompositionLayers, applyLayer } from "./composition.js";
 import { execa } from "execa";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,6 +33,8 @@ export interface CreateOptions {
   test?: boolean;
   ci?: boolean;
   trustRemote?: boolean;
+  dryRun?: boolean;
+  layers?: string[];
   nonInteractive?: boolean;
 }
 
@@ -50,6 +56,8 @@ export async function runCreate(options: CreateOptions) {
     test,
     ci,
     trustRemote = false,
+    dryRun = false,
+    layers = [],
     nonInteractive = false,
   } = options;
 
@@ -143,6 +151,49 @@ export async function runCreate(options: CreateOptions) {
       
       fs.copySync(templatePath, targetPath);
       spinner.succeed(chalk.green(`Template '${template}' loaded.`));
+
+      // Load template manifest for versioning
+      const manifest = loadTemplateManifest(templatePath);
+
+      // Apply composition layers if selected
+      if (layers.length > 0) {
+        const compLayers = resolveCompositionLayers(templatePath, layers);
+        for (const { path: layerDir, layer } of compLayers) {
+          spinner.text = `Applying layer: ${layer.name}...`;
+          applyLayer(layerDir, targetPath, layer.conflicts || "overwrite");
+        }
+      }
+
+      // Dry-run: show preview and exit
+      if (dryRun) {
+        spinner.stop();
+        const preview = scanTemplate(templatePath, targetPath);
+        if (nonInteractive) {
+          console.log(JSON.stringify(exportDryRunJSON(preview), null, 2));
+        } else {
+          printDryRun(preview);
+        }
+        // Don't create anything, just exit
+        fs.removeSync(targetPath);
+        console.log(chalk.gray("  Dry run complete. No files were created."));
+        return;
+      }
+    }
+
+    // Load hooks if present
+    const hooks = loadHooks(templatePath);
+
+    // Run pre-scaffold hooks
+    if (hooks) {
+      const vars = {
+        projectName: name,
+        author: variables?.author || "Developer",
+        license: variables?.license || "MIT",
+      };
+      const ok = await runHooks("pre_scaffold", hooks, targetPath, vars);
+      if (!ok) {
+        throw new Error("Pre-scaffold hooks failed. Aborting.");
+      }
     }
 
     // Apply CLI customizations
@@ -185,7 +236,34 @@ export async function runCreate(options: CreateOptions) {
 
     spinner.succeed(chalk.green("Project created successfully!"));
 
-    // 6. Open in VS Code
+    // 6. Run post-scaffold hooks
+    const ranHookIds: string[] = [];
+    if (hooks) {
+      const vars = {
+        projectName: name,
+        author: variables?.author || "Developer",
+        license: variables?.license || "MIT",
+      };
+      await runHooks("post_scaffold", hooks, targetPath, vars);
+      ranHookIds.push(...(hooks.post_scaffold || []).map(h => h.id));
+    }
+
+    // 7. Write scaffold lock file
+    const manifest = loadTemplateManifest(path.join(__dirname, "../../templates", template));
+    createLockFile(
+      template,
+      manifest?.version || "1.0.0",
+      "local",
+      targetPath,
+      {
+        projectName: name,
+        author: variables?.author || "Developer",
+        license: variables?.license || "MIT",
+      },
+      ranHookIds
+    );
+
+    // 8. Open in VS Code
     if (open) {
       const openCommands = [
         { cmd: "code", args: ["."] },

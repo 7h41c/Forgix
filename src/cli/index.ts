@@ -6,6 +6,8 @@ import { listCommand } from "../commands/list.js";
 import { doctorCommand } from "../commands/doctor.js";
 import { linkCommand } from "../commands/link.js";
 import { configCommand } from "../commands/config.js";
+import { checkCommand } from "../commands/check.js";
+import { registryCommand } from "../commands/registry.js";
 
 const program = new Command();
 
@@ -34,5 +36,7 @@ program.addCommand(listCommand);
 program.addCommand(doctorCommand);
 program.addCommand(linkCommand);
 program.addCommand(configCommand);
+program.addCommand(checkCommand);
+program.addCommand(registryCommand);
 
 program.parse(process.argv);
