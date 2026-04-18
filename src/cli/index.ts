@@ -24,7 +24,7 @@ function showBanner() {
 program
   .name("forgix")
   .description("An elite project scaffolding CLI")
-.version("1.1.0");
+  .version("1.1.0");
 
 showBanner();
 

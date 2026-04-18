@@ -24,7 +24,7 @@ export async function installDependencies(dir: string, packageManager: PackageMa
 
   try {
     await execa(command, args, { cwd: dir });
-  } catch (error) {
+  } catch {
     throw new Error(`Dependency installation failed with ${packageManager}.`);
   }
 }

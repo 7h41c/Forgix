@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Ignore Windows Zone.Identifier metadata files
+*:Zone.Identifier
 # Ignore test projects created during development
 /flow-test/
 /flow-test-2/

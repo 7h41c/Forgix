@@ -1,5 +1,5 @@
 {
-  "name": "@7h41c/forgix",
+  "name": "forgix",
   "version": "1.1.0",
   "description": "",
   "main": "index.js",
@@ -18,8 +18,8 @@
     "dev": "npm run build && node ./bin/forgix.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Tyler <admirableowl819@gmail.com>",
+  "license": "MIT",
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^25.6.0",

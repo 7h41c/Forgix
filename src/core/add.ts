@@ -24,9 +24,10 @@ export async function runAdd(plugin: string) {
     
     spinner.succeed(chalk.green(`Successfully added ${plugin} to your project!`));
     console.log(chalk.cyan(`\n💡 Tip: Check the new files added to your directory.\n`));
-  } catch (error: any) {
+  } catch (error) {
     spinner.fail(chalk.red(`Failed to add plugin.`));
-    console.error(chalk.red(error.message));
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(chalk.red(message));
     process.exit(1);
   }
 }

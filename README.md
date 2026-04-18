@@ -1,238 +1,234 @@
-<div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=12&height=200&section=header&text=Forgix%20🚀&fontSize=80&animation=fadeIn&fontAlignY=35" width="100%" alt="Forgix Animated Banner" />
-  <br />
-  <p><b>The elite, blazing-fast project scaffolding engine designed to eliminate boilerplate fatigue.</b></p>
+# Forgix
 
-  <img src="https://img.shields.io/npm/v/@7h41c/forgix.svg?style=flat-square&color=cb3837" alt="NPM Version" />
-  <img src="https://img.shields.io/badge/Node.js-%3E%3D18-green.svg?style=flat-square" alt="Node Support" />
-  <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=flat-square" alt="PRs Welcome" />
-</div>
+CLI project scaffolding tool. Generates ready-to-develop project structures from templates with configurable defaults, dependency installation, and tooling setup.
 
----
-
-## ⚡ What is Forgix?
-
-Forgix is not just a cloner — it's an intelligent **Project Architect**.
-
-Instead of manually copying files and editing configurations, Forgix automates the entire project creation process:
-- Injects your personal details
-- Sets up your environment
-- Opens your workspace instantly
-- Remembers who you are with global config
-
----
-
-## ✨ Elite Features
-
-- 🆔 **Developer Profile**  
-  Set your global identity once with `forgix config`. No more re-typing your name or license for every project.
-
-- 🎨 **Visual Identity**  
-  Sleek ASCII art branding and categorized, easy-to-read terminal menus.
-
-- 🩺 **Smart Doctor**  
-  Built-in diagnostics that don't just find problems—they help fix them.
-
-- 👤 **Personalization Engine**  
-  Automatically injects your **name** and **license** into:
-  - `package.json`
-  - `index.html`
-  - `README.md`
-
-- 📂 **Smart Scaffolding**  
-  - Use pre-built templates (React, Vue, Node, Python)  
-  - Or clone any public GitHub repository
-  - Or link any custom folder on your drive
-
-- 🧩 **Plugin Injection**  
-  Select multiple plugins (Docker, Tailwind, etc.) during project creation.
-
-- 🚀 **Elite Flow**  
-  - `--git` → auto initialize repository  
-  - `--open` → launch VS Code instantly  
-
----
-
-## 🚀 Installation
-
-### Run instantly (no install)
-```bash
-npx @7h41c/forgix create
+```
+npm install -g @7h41c/forgix
+forgix create my-app --template react-vite --ts --ci --docker
 ```
 
-### Install globally
+## What It Does
+
+Forgix copies a template into a new directory, injects variables (`projectName`, `author`, `license`), runs your package manager's install, and optionally initializes git, CI, linting, testing, and Docker — in one command.
+
+For CI/CD pipelines, it runs non-interactively when all required flags are provided.
+
+## Install
+
 ```bash
 npm install -g @7h41c/forgix
 ```
 
----
+Requires: Node.js >= 22, Git (optional, for `--git` and remote templates).
 
-## 🛠️ CLI Commands
-
-| Command | Description |
-|--------|-------------|
-| `forgix config` | Set your global developer name, license, and editor |
-| `forgix doctor` | Run system diagnostics with auto-fix capabilities |
-| `forgix list` | Show available templates, plugins, and custom links |
-| `forgix create` | Start interactive scaffolding wizard |
-| `forgix add <plugin>` | Inject a plugin (e.g. Docker) |
-| `forgix link <name>` | Link any folder on your PC as a custom template |
-
-All commands support `--non-interactive` (or `-n`) and `FORGIX_NON_INTERACTIVE=1` for CI/agent use. See [🤖 Agent Mode](#-agent-mode) below.
-
----
-
-## 💻 Usage Examples
-
-### 1. Interactive Mode (Standard)
+Verify setup:
 ```bash
+forgix doctor
+```
+
+## Usage
+
+```
+forgix create [name] [options]
+```
+
+If `name` or `--template` is omitted, Forgix prompts interactively.
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-t, --template <name>` | (prompt) | Template to scaffold from |
+| `--pm <npm\|yarn\|pnpm>` | `npm` | Package manager for install |
+| `--ts` | off | Use TypeScript |
+| `--css <tailwind\|sass>` | off | CSS framework |
+| `--docker` | off | Generate Dockerfile + docker-compose.yml |
+| `--eslint` | off | Add ESLint configuration |
+| `--prettier` | off | Add Prettier configuration |
+| `--test` | off | Add Jest test setup |
+| `--ci` | off | Add GitHub Actions workflow |
+| `--git` | off | `git init` + initial commit |
+| `--open` | off | Open in VS Code |
+| `--skip-install` | off | Skip `npm install` |
+
+### Examples
+
+```bash
+# Interactive (prompts for everything)
 forgix create
+
+# Full-stack project, non-interactive
+forgix create my-app -t react-vite-ts --pm pnpm --ts --eslint --prettier --test --ci --docker --git
+
+# Scaffold from a GitHub repo
+forgix create my-app -t github:user/repo
 ```
 
-### 2. Speed Mode (Skip Prompts)
+## Templates
+
+| Template | Stack |
+|----------|-------|
+| `react-vite` | React 18 + Vite |
+| `react-vite-ts` | React 18 + Vite + TypeScript |
+| `shadcn-next` | React + Next.js 14 + shadcn/ui + Tailwind |
+| `vue-app` | Vue 3 + Vite |
+| `nextjs` | Next.js 14 (App Router) |
+| `svelte` | Svelte 4 + Vite |
+| `node-api` | Node.js + Express |
+| `express-ts` | Express + TypeScript |
+| `python-script` | Python script |
+| `fastapi` | FastAPI + Uvicorn |
+| `github:<owner/repo>` | Any public GitHub repository |
+
+## Plugins
+
+Inject features into an existing project:
+
 ```bash
-forgix create my-app --template react-vite --git --open
+cd my-app
+forgix add docker
 ```
 
-### 3. Remote GitHub Template
-```bash
-forgix create remote-app --template github:user/repo
-```
+| Plugin | Adds |
+|--------|------|
+| `docker` | Dockerfile + docker-compose.yml |
+| `tailwind` | Tailwind CSS config |
+| `eslint` | ESLint config |
+| `prettier` | Prettier config |
+| `jest` | Jest test setup |
 
-### 4. Configure Once, Create Forever
+## Configuration
+
+Set persistent defaults via `forgix config`:
+
 ```bash
 forgix config
-forgix create my-app --git --open
 ```
 
-### 5. Non-Interactive / Agent Mode
+Config file: `~/.forgix-config.json` (permissions: `0600`)
+
+Options: default template, package manager, author name, license, and auto-apply flags (`--git`, `--open`, `--eslint`, etc.).
+
+### Custom Templates
+
+Link a local directory as a named template:
+
 ```bash
-forgix create my-app --non-interactive --template react-vite --git --author "Jane Doe" --license MIT
-forgix create my-app -n --template react-vite-ts --git --eslint --prettier --docker
-forgix config --set defaultAuthor="Jane Doe" defaultTemplate=react-vite
-forgix list --json
-forgix doctor --fix
+forgix link my-org-template ./path/to/template
+forgix create my-app -t my-org-template
 ```
 
----
+Links stored in: `~/.forgix-links.json`
 
-## 🧩 Variable Injection
+## Other Commands
 
-Forgix scans template files and replaces placeholders automatically:
+| Command | Description |
+|---------|-------------|
+| `forgix doctor` | Check Node, Git, npm, VS Code availability |
+| `forgix list` | List installed templates, plugins, and linked templates |
+| `forgix link <name> [path]` | Register a local folder as a named template |
 
-| Variable | Description |
-|----------|------------|
-| `{{projectName}}` | Your project folder name |
-| `{{author}}` | Your name |
-| `{{license}}` | Selected license (MIT, ISC, Apache) |
+## Template Variables
 
----
+Files in templates can contain these placeholders, replaced at scaffold time:
 
-## 🤖 Agent Mode
+| Placeholder | Value |
+|-------------|-------|
+| `{{projectName}}` | Project directory name |
+| `{{author}}` | From CLI prompt or `forgix config` |
+| `{{license}}` | From CLI prompt or `forgix config` |
 
-Forgix is fully agent-friendly — AI assistants, CI pipelines, and scripts can use every command without interactive prompts.
+Binary files (images, archives, etc.) are skipped automatically.
 
-### Environment Variable
+## Security Model
 
-Set `FORGIX_NON_INTERACTIVE=1` to force non-interactive mode globally (e.g. in Dockerfiles or CI).
+| Concern | Mitigation |
+|---------|------------|
+| Remote template trust | Explicit confirmation prompt before cloning GitHub repos |
+| `.git` from cloned repos | Removed automatically after clone |
+| `postinstall` scripts | Warning shown; user must inspect manually |
+| Config file exposure | Written with `0600` permissions (owner-only) |
+| Path traversal in custom links | Resolved paths validated; `..` and sensitive directories (`.ssh`, `.aws`, etc.) blocked |
+| Symlink attacks | Templates and plugins checked for symlinks |
 
-### Create Flags
+**For pipeline use:** Remote templates (`github:`) require user confirmation. For unattended CI, use local or linked templates only.
+
+## CI/CD Integration
+
+The `--ci` flag generates a GitHub Actions workflow (`.github/workflows/ci.yml`) that runs `npm install` and `npm test`.
+
+For pipeline use, run non-interactively:
+
+```bash
+forgix create my-app -t react-vite --pm npm --ci --skip-install
+```
+
+## Agent Mode (Non-Interactive)
+
+All commands support non-interactive mode for CI pipelines, scripts, and AI agents.
+
+Set `FORGIX_NON_INTERACTIVE=1` or pass `-n`/`--non-interactive` to skip prompts.
+
+### Additional Flags (create)
 
 | Flag | Description |
 |------|-------------|
-| `-n, --non-interactive` | Skip all prompts, use defaults |
+| `-n, --non-interactive` | Skip all prompts, use defaults and flags |
 | `-a, --author <name>` | Author name |
 | `-l, --license <type>` | License (MIT, ISC, Apache-2.0, GPL-3.0) |
-| `-p, --plugins <plugins...>` | Plugins to inject (space-separated) |
+| `-p, --plugins <plugins...>` | Plugins to inject |
 | `--trust-remote` | Auto-accept remote GitHub template clones |
-| `--pm, --package-manager <pm>` | Package manager (npm, yarn, pnpm) |
 
-All other flags (`--git`, `--eslint`, `--docker`, `--ts`, `--ci`, etc.) work in both interactive and non-interactive mode.
+### Other Commands
 
-### Config Flags
-
-| Flag | Description |
-|------|-------------|
-| `--show` | Display current config |
-| `--json` | Output config as JSON |
-| `--set <key=value...>` | Set config values non-interactively |
-
-### Doctor Flags
-
-| Flag | Description |
-|------|-------------|
-| `--fix` | Auto-fix issues without prompting |
-| `-n, --non-interactive` | Report only, no prompts |
+| Command | Flags | Description |
+|---------|-------|-------------|
+| `forgix config --show` | | Display current config |
+| `forgix config --json` | | Output config as JSON |
+| `forgix config --set key=value` | | Set values non-interactively |
+| `forgix list --json` | | List templates/plugins as JSON |
+| `forgix doctor --fix` | | Auto-fix issues without prompting |
+| `forgix doctor -n` | | Report only, no prompts |
 
 ### JSON Output
 
-`forgix list --json` returns machine-readable template/plugin data. `forgix create --non-interactive` outputs a JSON summary on success.
+`forgix create --non-interactive` outputs a JSON summary on success:
 
-**Full reference:** See [`AGENT.md`](./AGENT.md) for complete agent integration documentation.
+```json
+{
+  "status": "created",
+  "name": "my-app",
+  "template": "react-vite",
+  "path": "/home/user/projects/my-app",
+  "packageManager": "npm",
+  "git": true,
+  "plugins": ["eslint"]
+}
+```
 
----
+Full reference: see [AGENT.md](./AGENT.md).
 
-## 💡 Pro Tips
+## Architecture
 
-- 🧼 **Keep it clean**  
-  Run:
-  ```bash
-  forgix doctor
-  ```
+```
+src/
+  cli/index.ts          Entry point, command registration
+  commands/
+    create.ts           Interactive create flow (prompts + flags)
+    add.ts              Plugin injection
+    config.ts           Profile configuration
+    doctor.ts           System health checks
+    list.ts             Template/plugin listing
+    link.ts             Custom template registration
+  core/
+    create.ts           Template copy, variable injection, plugin install, git init
+    install.ts          Package manager abstraction (npm/yarn/pnpm)
+    template-engine.ts  Recursive {{variable}} replacement
+    config.ts           Read/write ~/.forgix-config.json
+templates/              Built-in project templates
+plugins/                Injectable feature modules (docker, tailwind, etc.)
+```
 
-- ⚡ **Auto open project**
-  ```bash
-  --open
-  ```
+## License
 
-- ⏭️ **Skip dependency install**
-  ```bash
-  --skip-install
-  ```
-
-- 🆔 **Set your identity once**
-  ```bash
-  forgix config
-  ```
-
----
-
-## 🗺️ Roadmap
-
-- [x] v1.0.7 — Global Config Profile & Smart Doctor Fixes
-- [x] v1.0.6 — Interactive Plugin Selection
-- [x] v1.0.5 — Custom template linking (`forgix link`)
-- [x] v1.0.4 — ASCII branding & categorized menus
-- [x] v1.0.3 — System diagnostics & variable injection
-- [x] v1.0.8 — CLI flags, package managers, default config, agent mode
-- [ ] v1.0.9 — Forgix Cloud - Sync templates across machines
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome and help improve Forgix.
-
-### Steps:
-
-1. Fork the repository  
-2. Create a branch  
-   ```bash
-   git checkout -b feature/AmazingFeature
-   ```
-3. Commit your changes  
-   ```bash
-   git commit -m "Add AmazingFeature"
-   ```
-4. Push to your branch  
-   ```bash
-   git push origin feature/AmazingFeature
-   ```
-5. Open a Pull Request  
-
----
-
-<div align="center">
-  <p>Built with ❤️ by T7h41 and the Forgix Community.</p>
-</div>
+MIT
